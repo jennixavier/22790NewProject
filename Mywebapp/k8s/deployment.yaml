@@ -1,0 +1,145 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: 22790-webapp-deployment
+  namespace: 22790-Project
+  labels:
+    app: webapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      serviceAccountName: webapp-sa-22790
+      containers:
+        - name: webapp
+          image: ghcr.io/jennixavier/helloworld:v1
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: 22790-webapp-config
+            - secretRef:
+                name: 22790-webapp-secret
+          volumeMounts:
+            - name: app-storage
+              mountPath: /usr/share/nginx/html  # Example path
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: app-storage
+          persistentVolumeClaim:
+            claimName: webapp-pvc
+
+---
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: 22790-webapp-service
+  namespace: 22790-Project
+spec:
+  selector:
+    app: webapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP
+
+---
+
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: 22790-webapp-route
+spec:
+  to:
+    kind: Service
+    name: 22790-webapp-service
+  port:
+    targetPort: 80
+  tls:
+    termination: edge
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: webapp-sa-22790
+
+---
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: 22790-webapp-role
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: 22790-webapp-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: webapp-sa-22790
+roleRef:
+  kind: Role
+  name: webapp-role-22790
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: 22790-webapp-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: 22790-webapp-secret
+type: Opaque
+stringData:
+  APP_KEY: MySecretKey123
+
+---
+
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: 22790-webapp-config
+data:
+  WELCOME_MSG: "Welcome to My Web Application on ROSA!"
