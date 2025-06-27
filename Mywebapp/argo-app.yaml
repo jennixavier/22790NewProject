@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/RevathiBala/helo-world-app'
+    repoURL: 'https://github.com/jennixavier/22790NewProject.git'
     targetRevision: main
     path: k8s
   destination:
